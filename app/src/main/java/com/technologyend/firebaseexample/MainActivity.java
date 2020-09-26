@@ -1,10 +1,15 @@
 package com.technologyend.firebaseexample;
 
 import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
@@ -30,10 +35,15 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -42,6 +52,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -67,12 +78,15 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthStateListener;
     private FirebaseStorage mFirebaseStorage;
     private StorageReference mChatPhotosStorageReference;
+    private static final String channelID = "NewMSG";
+    private int noOfMsg = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+       
         mUsername = ANONYMOUS;
 
         mFirebaseDatabase = FirebaseDatabase.getInstance();
@@ -190,11 +204,21 @@ public class MainActivity extends AppCompatActivity {
 
     private void attachDatabaseReadListener() {
         if (mChildEventListener == null) {
+            Query myMostViewedPostsQuery = mMessagesDatabaseReference.limitToLast(10);
             mChildEventListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     FriendlyMessage friendlyMessage = snapshot.getValue(FriendlyMessage.class);
                     mMessageAdapter.add(friendlyMessage);
+
+                    noOfMsg++;
+                    if(!friendlyMessage.getName().equals(mUsername) && noOfMsg >= 10) {
+                        try {
+                            createNotification(friendlyMessage.getName(), friendlyMessage.getText(), friendlyMessage.getPhotoUrl());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
 
                 @Override
@@ -213,7 +237,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onCancelled(@NonNull DatabaseError error) {
                 }
             };
-            mMessagesDatabaseReference.addChildEventListener(mChildEventListener);
+            myMostViewedPostsQuery.addChildEventListener(mChildEventListener);
         }
     }
 
@@ -258,8 +282,8 @@ public class MainActivity extends AppCompatActivity {
                     finish();
                 }
             }
-        if(requestCode == RC_PHOTO_PICKER){
-            if(resultCode == Activity.RESULT_OK){
+        if(requestCode == RC_PHOTO_PICKER && resultCode == Activity.RESULT_OK){
+
                 Uri selectedImageUri = data.getData();
 
                 // Get a reference to store file at chat_photos/<FILENAME>
@@ -284,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Try Again", Toast.LENGTH_SHORT).show();
             }
         }
-        }
+
 
     @Override
     protected void onResume() {
@@ -330,6 +354,61 @@ public class MainActivity extends AppCompatActivity {
         if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)){
             askForName();
         }
+    }
 
+
+        private void createNotification(String uname, String txtMsg, String urlImg) throws IOException {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                CharSequence name = "NewMessage";
+                String description = "New Message Notification";
+                int importance = NotificationManager.IMPORTANCE_DEFAULT;
+                NotificationChannel channel = new NotificationChannel(channelID, name, importance);
+                channel.setDescription(description);
+                NotificationManager notificationManager = getSystemService(NotificationManager.class);
+                notificationManager.createNotificationChannel(channel);
+
+                if(urlImg == null || urlImg.equals("")){
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
+                        .setSmallIcon(R.mipmap.chat_round)
+                        .setContentTitle("New Message from "+uname)
+                        .setContentText(txtMsg)
+                        .setStyle(new NotificationCompat.BigTextStyle()
+                                .bigText(txtMsg))
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
+                notificationManager.notify(1, builder.build());
+            }else {
+
+                        try{
+                            Bitmap image;
+                            URL url = new URL(urlImg);
+                        image = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                    NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
+                            .setSmallIcon(R.mipmap.chat_round)
+                            .setContentTitle("New Message from "+uname)
+                            .setContentText(txtMsg)
+                            .setStyle(new NotificationCompat.BigPictureStyle()
+                                    .bigPicture(image))
+                            .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
+                    notificationManager.notify(1, builder.build());
+                        }
+                        catch (Exception e){
+                            Toast.makeText(MainActivity.this, e.getStackTrace()+"", Toast.LENGTH_LONG).show();
+                        }
+                }
+            }
+        }
+    public static Bitmap getBitmapFromURL(String src) {
+        try {
+            URL url = new URL(src);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setDoInput(true);
+            connection.connect();
+            InputStream input = connection.getInputStream();
+            Bitmap myBitmap = BitmapFactory.decodeStream(input);
+            return myBitmap;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
