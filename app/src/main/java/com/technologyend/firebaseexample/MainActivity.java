@@ -1,11 +1,14 @@
 package com.technologyend.firebaseexample;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputFilter;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -37,6 +40,7 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
@@ -46,6 +50,8 @@ public class MainActivity extends AppCompatActivity {
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
     public static final int RC_SIGN_IN = 1;
     private static final int RC_PHOTO_PICKER =  2;
+    private static final String MYSHAREDPREF = "mysharedpref";
+    private static final String FULLNAME = "fullname";
 
     private ListView mMessageListView;
     private MessageAdapter mMessageAdapter;
@@ -53,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton mPhotoPickerButton;
     private EditText mMessageEditText;
     private Button mSendButton;
-    private String mUsername;
+    private String mUsername, mPhoneNum;
     private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
     private ChildEventListener mChildEventListener;
@@ -61,9 +67,6 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthStateListener;
     private FirebaseStorage mFirebaseStorage;
     private StorageReference mChatPhotosStorageReference;
-    private Uri downloadUrl;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -137,7 +140,9 @@ public class MainActivity extends AppCompatActivity {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if(user != null){
                     //user signed in
+                    mPhoneNum = user.getPhoneNumber();
                     onSignedInInitialize(user.getDisplayName());
+
                 }
                 else{
                     //user not signed in
@@ -171,6 +176,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void onSignedInInitialize(String username) {
         mUsername = username;
+        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
+            getName();
+        }
         attachDatabaseReadListener();
     }
     private void onSignedOutCleanup() {
@@ -225,7 +233,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if(item.getItemId() == R.id.sign_out_menu){
-            //mFirebaseAuth.signOut();
+            SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(FULLNAME, "");
+            editor.apply();
             AuthUI.getInstance().signOut(this);
         }
         return super.onOptionsItemSelected(item);
@@ -291,4 +302,34 @@ public class MainActivity extends AppCompatActivity {
         mMessageAdapter.clear();
     }
 
+    private void askForName(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Please Enter your Name: ");
+        builder.setCancelable(false);
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(input);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPreferences.edit();
+                editor.putString(FULLNAME, mPhoneNum+" ~ "+input.getText().toString());
+                editor.apply();
+                mUsername = sharedPreferences.getString(FULLNAME, "");
+            }
+        });
+
+        builder.show();
+    }
+
+    private void getName(){
+                SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
+                mUsername = sharedPreferences.getString(FULLNAME, "");
+
+        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)){
+            askForName();
+        }
+
+    }
 }
