@@ -6,8 +6,6 @@ import android.app.NotificationManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -41,9 +39,6 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -212,13 +207,16 @@ public class MainActivity extends AppCompatActivity {
                     mMessageAdapter.add(friendlyMessage);
 
                     noOfMsg++;
-                    if(!friendlyMessage.getName().equals(mUsername) && noOfMsg >= 10) {
-                        try {
-                            createNotification(friendlyMessage.getName(), friendlyMessage.getText(), friendlyMessage.getPhotoUrl());
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                    String currentMsgUname = friendlyMessage.getName();
+                    String currentMsgText = friendlyMessage.getText();
+
+                        if(!currentMsgUname.equals(mUsername) && noOfMsg >10) {
+                            try {
+                                createNotification(currentMsgUname, currentMsgText);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
-                    }
                 }
 
                 @Override
@@ -265,12 +263,6 @@ public class MainActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-//    @Override
-////    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-////        super.onActivityResult(requestCode, resultCode, data);
-
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
@@ -357,8 +349,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-        private void createNotification(String uname, String txtMsg, String urlImg) throws IOException {
+        private void createNotification(String uname, String txtMsg) throws IOException {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                String msgtext="";
+                if(txtMsg == null || txtMsg.equals("")){
+                    msgtext = "New Image Uploaded. Check now!";
+                    //Toast.makeText(MainActivity.this, "Image Upload", Toast.LENGTH_SHORT).show();
+                }else{
+                    msgtext = txtMsg;
+                    //Toast.makeText(MainActivity.this, "Text Upload", Toast.LENGTH_SHORT).show();
+                }
                 CharSequence name = "NewMessage";
                 String description = "New Message Notification";
                 int importance = NotificationManager.IMPORTANCE_DEFAULT;
@@ -366,49 +366,16 @@ public class MainActivity extends AppCompatActivity {
                 channel.setDescription(description);
                 NotificationManager notificationManager = getSystemService(NotificationManager.class);
                 notificationManager.createNotificationChannel(channel);
-
-                if(urlImg == null || urlImg.equals("")){
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
                         .setSmallIcon(R.mipmap.chat_round)
                         .setContentTitle("New Message from "+uname)
-                        .setContentText(txtMsg)
+                        .setContentText(msgtext)
                         .setStyle(new NotificationCompat.BigTextStyle()
                                 .bigText(txtMsg))
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
                 notificationManager.notify(1, builder.build());
-            }else {
-
-                        try{
-                            Bitmap image;
-                            URL url = new URL(urlImg);
-                        image = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-                    NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
-                            .setSmallIcon(R.mipmap.chat_round)
-                            .setContentTitle("New Message from "+uname)
-                            .setContentText(txtMsg)
-                            .setStyle(new NotificationCompat.BigPictureStyle()
-                                    .bigPicture(image))
-                            .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
-                    notificationManager.notify(1, builder.build());
-                        }
-                        catch (Exception e){
-                            Toast.makeText(MainActivity.this, e.getStackTrace()+"", Toast.LENGTH_LONG).show();
-                        }
+            }
                 }
             }
-        }
-    public static Bitmap getBitmapFromURL(String src) {
-        try {
-            URL url = new URL(src);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream input = connection.getInputStream();
-            Bitmap myBitmap = BitmapFactory.decodeStream(input);
-            return myBitmap;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-}
+
+
