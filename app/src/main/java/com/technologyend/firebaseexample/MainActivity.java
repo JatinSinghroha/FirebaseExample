@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        List<String> whitelistedCountries = new ArrayList<String>();
+        ArrayList<String> whitelistedCountries = new ArrayList<String>();
         whitelistedCountries.add("US");
         whitelistedCountries.add("NP");
         whitelistedCountries.add("IN");

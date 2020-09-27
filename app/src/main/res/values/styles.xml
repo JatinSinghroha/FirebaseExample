@@ -27,10 +27,10 @@
         <item name="android:textColor">@android:color/white</item>
         <item name="android:textColorPrimary">@android:color/white</item>
         <item name="android:textColorSecondary">@android:color/white</item>
+        <item name="colorBackgroundFloating">@color/floatingBG</item>
+        <item name="android:colorBackgroundFloating">@color/floatingBG</item>
         <item name="android:windowBackground">@drawable/bg4</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:textColorHint">@android:color/white</item>
-        <item name="colorError">@android:color/white</item>
     </style>
 </resources>
