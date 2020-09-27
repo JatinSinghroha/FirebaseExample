@@ -367,7 +367,7 @@ public class MainActivity extends AppCompatActivity {
                 NotificationManager notificationManager = getSystemService(NotificationManager.class);
                 notificationManager.createNotificationChannel(channel);
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
-                        .setSmallIcon(R.mipmap.chat_round)
+                        .setSmallIcon(R.drawable.ic_stat_name)
                         .setContentTitle("New Message from "+uname)
                         .setContentText(msgtext)
                         .setStyle(new NotificationCompat.BigTextStyle()
