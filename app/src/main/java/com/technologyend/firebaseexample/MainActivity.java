@@ -146,6 +146,8 @@ public class MainActivity extends AppCompatActivity {
                         AuthUI.getInstance()
                                 .createSignInIntentBuilder()
                                 .setIsSmartLockEnabled(false)
+                                .setLogo(R.drawable.chat_foreground)
+                                .setTheme(R.style.LoginTheme)
                                 .setAvailableProviders(Arrays.asList(
                                         new AuthUI.IdpConfig.GoogleBuilder().build(),
                                         new AuthUI.IdpConfig.PhoneBuilder().setDefaultCountryIso("IN").setWhitelistedCountries(whitelistedCountries).build(),
