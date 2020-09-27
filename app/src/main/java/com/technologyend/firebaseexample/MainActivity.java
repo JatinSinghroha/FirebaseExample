@@ -70,6 +70,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        List<String> whitelistedCountries = new ArrayList<String>();
+        whitelistedCountries.add("US");
+        whitelistedCountries.add("NP");
+        whitelistedCountries.add("IN");
        
         mUsername = ANONYMOUS;
 
@@ -144,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setIsSmartLockEnabled(false)
                                 .setAvailableProviders(Arrays.asList(
                                         new AuthUI.IdpConfig.GoogleBuilder().build(),
-                                        new AuthUI.IdpConfig.PhoneBuilder().build(),
+                                        new AuthUI.IdpConfig.PhoneBuilder().setDefaultCountryIso("IN").setWhitelistedCountries(whitelistedCountries).build(),
                                         new AuthUI.IdpConfig.EmailBuilder().build()))
                                 .build(),
                         RC_SIGN_IN);
@@ -246,31 +250,32 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == RC_SIGN_IN){
+        if (requestCode == RC_SIGN_IN) {
             if (resultCode != Activity.RESULT_OK) {
-                    finish();
-                }
+                finish();
             }
-        if(requestCode == RC_PHOTO_PICKER && resultCode == Activity.RESULT_OK){
-            assert data != null;
-            Uri selectedImageUri = data.getData();
+        }
+        if (requestCode == RC_PHOTO_PICKER) {
+            if (resultCode == Activity.RESULT_OK) {
+                assert data != null;
+                Uri selectedImageUri = data.getData();
 
                 // Get a reference to store file at chat_photos/<FILENAME>
-            assert selectedImageUri != null;
-            final StorageReference photoRef = mChatPhotosStorageReference.child(Objects.requireNonNull(selectedImageUri.getLastPathSegment()));
+                assert selectedImageUri != null;
+                final StorageReference photoRef = mChatPhotosStorageReference.child(Objects.requireNonNull(selectedImageUri.getLastPathSegment()));
 
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
                         .addOnSuccessListener(this, taskSnapshot -> photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                 FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString());
+                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString());
                             mMessagesDatabaseReference.push().setValue(friendlyMessage);
                             Toast.makeText(MainActivity.this, "Image Uploaded, Loading Now", Toast.LENGTH_LONG).show();
                         }));
-            }
-            else{
+            } else {
                 Toast.makeText(this, "Try Again", Toast.LENGTH_SHORT).show();
             }
         }
+    }
 
 
     @Override
