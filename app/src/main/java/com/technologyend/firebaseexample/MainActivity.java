@@ -3,6 +3,7 @@ package com.technologyend.firebaseexample;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -53,9 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private static final int RC_PHOTO_PICKER =  2;
     private static final String MYSHAREDPREF = "mysharedpref";
     private static final String FULLNAME = "fullname";
-
     private MessageAdapter mMessageAdapter;
     private EditText mMessageEditText;
+    private ListView messageListView;
     private Button mSendButton;
     private String mUsername, mPhoneNum;
     private DatabaseReference mMessagesDatabaseReference;
@@ -64,8 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthStateListener;
     private StorageReference mChatPhotosStorageReference;
     private static final String channelID = "NewMSG";
-    private int noOfMsg = 0;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,7 +81,8 @@ public class MainActivity extends AppCompatActivity {
 
 
         ProgressBar progressBar = findViewById(R.id.progressBar);
-        ListView messageListView = findViewById(R.id.messageListView);
+        messageListView = findViewById(R.id.messageListView);
+        messageListView.setItemsCanFocus(true);
         ImageButton photoPickerButton = findViewById(R.id.photoPickerButton);
         mMessageEditText =  findViewById(R.id.messageEditText);
         mSendButton = findViewById(R.id.sendButton);
@@ -177,19 +177,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void attachDatabaseReadListener() {
         if (mChildEventListener == null) {
-            Query myMostViewedPostsQuery = mMessagesDatabaseReference.limitToLast(10);
+            Query myMostViewedPostsQuery = mMessagesDatabaseReference.limitToLast(15);
             mChildEventListener = new ChildEventListener() {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     FriendlyMessage friendlyMessage = snapshot.getValue(FriendlyMessage.class);
                     mMessageAdapter.add(friendlyMessage);
 
-                    noOfMsg++;
+                    if(mMessageAdapter.getCount() >= 15){
+                        scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
+                    }
+
                     assert friendlyMessage != null;
                     String currentMsgUname = friendlyMessage.getName();
                     String currentMsgText = friendlyMessage.getText();
 
-                        if(!currentMsgUname.equals(mUsername) && noOfMsg >10) {
+                    if(!currentMsgUname.equals(mUsername) && mMessageAdapter.getCount() >15 && mMessageAdapter.getPosition(friendlyMessage) > 14) {
+                        //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
                                 createNotification(currentMsgUname, currentMsgText);
                         }
                 }
@@ -330,16 +334,27 @@ public class MainActivity extends AppCompatActivity {
                 channel.setDescription(description);
                 NotificationManager notificationManager = getSystemService(NotificationManager.class);
                 notificationManager.createNotificationChannel(channel);
+                //Intent
+                Intent resultIntent = new Intent(this, MainActivity.class);
+                resultIntent.setAction(Intent.ACTION_MAIN);
+                resultIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                PendingIntent pendingIntent = PendingIntent.getActivity(this, 0,
+                        resultIntent, 0);
+
                 NotificationCompat.Builder builder = new NotificationCompat.Builder(this, channelID)
                         .setSmallIcon(R.drawable.ic_stat_name)
                         .setContentTitle("New Message from "+uname)
                         .setContentText(msgtext)
+                        .setContentIntent(pendingIntent)
                         .setStyle(new NotificationCompat.BigTextStyle()
                                 .bigText(txtMsg))
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT).setAutoCancel(true);
                 notificationManager.notify(1, builder.build());
             }
                 }
-            }
+    private void scrollMyListViewToBottom(int pos) {
+        messageListView.post(() -> messageListView.setSelection(pos));
+    }
+}
 
 
