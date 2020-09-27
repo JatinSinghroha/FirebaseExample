@@ -3,7 +3,6 @@ package com.technologyend.firebaseexample;
 import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -16,7 +15,6 @@ import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -25,7 +23,6 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -36,12 +33,11 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -50,7 +46,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
 
     public static final String ANONYMOUS = "anonymous";
     public static final int DEFAULT_MSG_LENGTH_LIMIT = 1000;
@@ -59,19 +54,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String MYSHAREDPREF = "mysharedpref";
     private static final String FULLNAME = "fullname";
 
-    private ListView mMessageListView;
     private MessageAdapter mMessageAdapter;
-    private ProgressBar mProgressBar;
-    private ImageButton mPhotoPickerButton;
     private EditText mMessageEditText;
     private Button mSendButton;
     private String mUsername, mPhoneNum;
-    private FirebaseDatabase mFirebaseDatabase;
     private DatabaseReference mMessagesDatabaseReference;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthStateListener;
-    private FirebaseStorage mFirebaseStorage;
     private StorageReference mChatPhotosStorageReference;
     private static final String channelID = "NewMSG";
     private int noOfMsg = 0;
@@ -84,32 +74,29 @@ public class MainActivity extends AppCompatActivity {
        
         mUsername = ANONYMOUS;
 
-        mFirebaseDatabase = FirebaseDatabase.getInstance();
+        FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
-        mFirebaseStorage = FirebaseStorage.getInstance();
-        mMessagesDatabaseReference = mFirebaseDatabase.getReference().child("messages");
-        mChatPhotosStorageReference = mFirebaseStorage.getReference().child("chat_photos");
+        FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
+        mMessagesDatabaseReference = firebaseDatabase.getReference().child("messages");
+        mChatPhotosStorageReference = firebaseStorage.getReference().child("chat_photos");
 
 
-        mProgressBar = (ProgressBar) findViewById(R.id.progressBar);
-        mMessageListView = (ListView) findViewById(R.id.messageListView);
-        mPhotoPickerButton = (ImageButton) findViewById(R.id.photoPickerButton);
-        mMessageEditText = (EditText) findViewById(R.id.messageEditText);
-        mSendButton = (Button) findViewById(R.id.sendButton);
+        ProgressBar progressBar = findViewById(R.id.progressBar);
+        ListView messageListView = findViewById(R.id.messageListView);
+        ImageButton photoPickerButton = findViewById(R.id.photoPickerButton);
+        mMessageEditText =  findViewById(R.id.messageEditText);
+        mSendButton = findViewById(R.id.sendButton);
 
         // Initialize message ListView and its adapter
         List<FriendlyMessage> friendlyMessages = new ArrayList<>();
         mMessageAdapter = new MessageAdapter(this, R.layout.item_message, friendlyMessages);
-        mMessageListView.setAdapter(mMessageAdapter);
+        messageListView.setAdapter(mMessageAdapter);
 
         // Initialize progress bar
-        mProgressBar.setVisibility(ProgressBar.INVISIBLE);
+        progressBar.setVisibility(ProgressBar.INVISIBLE);
 
         // ImagePickerButton shows an image picker to upload a image for a message
-        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-            }
+        photoPickerButton.setOnClickListener(view -> {
         });
 
         // Enable Send button when there's text to send
@@ -133,52 +120,43 @@ public class MainActivity extends AppCompatActivity {
         });
         mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
 
-        mSendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null);
-                mMessagesDatabaseReference.push().setValue(friendlyMessage);
-                mMessageEditText.setText("");
-                //throw new RuntimeException("Test Crash");
-            }
+        mSendButton.setOnClickListener(view -> {
+            FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null);
+            mMessagesDatabaseReference.push().setValue(friendlyMessage);
+            mMessageEditText.setText("");
+            //throw new RuntimeException("Test Crash");
         });
 
-        mAuthStateListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-                if(user != null){
-                    //user signed in
-                    mPhoneNum = user.getPhoneNumber();
-                    onSignedInInitialize(user.getDisplayName());
+        mAuthStateListener = firebaseAuth -> {
+            FirebaseUser user = firebaseAuth.getCurrentUser();
+            if(user != null){
+                //user signed in
+                mPhoneNum = user.getPhoneNumber();
+                onSignedInInitialize(user.getDisplayName());
 
-                }
-                else{
-                    //user not signed in
-                    onSignedOutCleanup();
-                    startActivityForResult(
-                            AuthUI.getInstance()
-                                    .createSignInIntentBuilder()
-                                    .setIsSmartLockEnabled(false)
-                                    .setAvailableProviders(Arrays.asList(
-                                            new AuthUI.IdpConfig.GoogleBuilder().build(),
-                                            new AuthUI.IdpConfig.PhoneBuilder().build(),
-                                            new AuthUI.IdpConfig.EmailBuilder().build()))
-                                    .build(),
-                            RC_SIGN_IN);
-                }
+            }
+            else{
+                //user not signed in
+                onSignedOutCleanup();
+                startActivityForResult(
+                        AuthUI.getInstance()
+                                .createSignInIntentBuilder()
+                                .setIsSmartLockEnabled(false)
+                                .setAvailableProviders(Arrays.asList(
+                                        new AuthUI.IdpConfig.GoogleBuilder().build(),
+                                        new AuthUI.IdpConfig.PhoneBuilder().build(),
+                                        new AuthUI.IdpConfig.EmailBuilder().build()))
+                                .build(),
+                        RC_SIGN_IN);
             }
         };
 
         // ImagePickerButton shows an image picker to upload a image for a message
-        mPhotoPickerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("image/jpeg");
-                intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
-                startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
-            }
+        photoPickerButton.setOnClickListener(view -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/jpeg");
+            intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
+            startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
         });
     }
 
@@ -207,15 +185,12 @@ public class MainActivity extends AppCompatActivity {
                     mMessageAdapter.add(friendlyMessage);
 
                     noOfMsg++;
+                    assert friendlyMessage != null;
                     String currentMsgUname = friendlyMessage.getName();
                     String currentMsgText = friendlyMessage.getText();
 
                         if(!currentMsgUname.equals(mUsername) && noOfMsg >10) {
-                            try {
                                 createNotification(currentMsgUname, currentMsgText);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
                         }
                 }
 
@@ -268,33 +243,25 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == RC_SIGN_IN){
-            if (resultCode == Activity.RESULT_OK) {
-
-            }else{
+            if (resultCode != Activity.RESULT_OK) {
                     finish();
                 }
             }
         if(requestCode == RC_PHOTO_PICKER && resultCode == Activity.RESULT_OK){
-
-                Uri selectedImageUri = data.getData();
+            assert data != null;
+            Uri selectedImageUri = data.getData();
 
                 // Get a reference to store file at chat_photos/<FILENAME>
-                final StorageReference photoRef = mChatPhotosStorageReference.child(selectedImageUri.getLastPathSegment());
+            assert selectedImageUri != null;
+            final StorageReference photoRef = mChatPhotosStorageReference.child(Objects.requireNonNull(selectedImageUri.getLastPathSegment()));
 
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
-                        .addOnSuccessListener(this, new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                photoRef.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                    @Override
-                                    public void onSuccess(Uri uri) {
-                             FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString());
-                                        mMessagesDatabaseReference.push().setValue(friendlyMessage);
-                                        Toast.makeText(MainActivity.this, "Image Uploaded, Loading Now", Toast.LENGTH_LONG).show();
-                                    }
-                                });
-                            }
-                        });
+                        .addOnSuccessListener(this, taskSnapshot -> photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                 FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString());
+                            mMessagesDatabaseReference.push().setValue(friendlyMessage);
+                            Toast.makeText(MainActivity.this, "Image Uploaded, Loading Now", Toast.LENGTH_LONG).show();
+                        }));
             }
             else{
                 Toast.makeText(this, "Try Again", Toast.LENGTH_SHORT).show();
@@ -325,15 +292,12 @@ public class MainActivity extends AppCompatActivity {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
-        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
-                SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.putString(FULLNAME, mPhoneNum+" ~ "+input.getText().toString());
-                editor.apply();
-                mUsername = sharedPreferences.getString(FULLNAME, "");
-            }
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString(FULLNAME, mPhoneNum+" ~ "+input.getText().toString());
+            editor.apply();
+            mUsername = sharedPreferences.getString(FULLNAME, "");
         });
 
         builder.show();
@@ -349,9 +313,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-        private void createNotification(String uname, String txtMsg) throws IOException {
+        private void createNotification(String uname, String txtMsg) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                String msgtext="";
+                String msgtext;
                 if(txtMsg == null || txtMsg.equals("")){
                     msgtext = "New Image Uploaded. Check now!";
                     //Toast.makeText(MainActivity.this, "Image Upload", Toast.LENGTH_SHORT).show();
