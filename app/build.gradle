@@ -37,6 +37,7 @@ dependencies {
     implementation 'com.firebaseui:firebase-ui-auth:6.3.0'
 //    implementation 'com.firebaseui:firebase-ui-database:6.3.0'
     implementation 'com.google.firebase:firebase-crashlytics:17.2.1'
+    implementation 'com.google.firebase:firebase-config:19.2.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'

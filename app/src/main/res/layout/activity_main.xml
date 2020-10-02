@@ -18,6 +18,7 @@
         android:divider="@android:color/transparent"
         android:transcriptMode="alwaysScroll"
         tools:listitem="@layout/item_message"
+        android:longClickable="true"
         />
 
     <LinearLayout

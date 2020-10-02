@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
@@ -16,6 +17,8 @@ import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -24,6 +27,8 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -32,12 +37,19 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
@@ -54,16 +66,22 @@ public class MainActivity extends AppCompatActivity {
     private static final int RC_PHOTO_PICKER =  2;
     private static final String MYSHAREDPREF = "mysharedpref";
     private static final String FULLNAME = "fullname";
+    public static final String FRIENDLY_MSG_LENGTH_KEY = "friendly_msg_length";
     private MessageAdapter mMessageAdapter;
     private EditText mMessageEditText;
     private ListView messageListView;
+    private Boolean isOld;
+
     private Button mSendButton;
-    private String mUsername, mPhoneNum;
-    private DatabaseReference mMessagesDatabaseReference;
+    private String muserID, mUsername, mPhoneNum, mEmail;
+    private DatabaseReference mMessagesDatabaseReference, mUsersDatabaseReference, mUsersDatabaseReference1;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
+    private FirebaseDatabase firebaseDatabase;
     private FirebaseAuth.AuthStateListener mAuthStateListener;
     private StorageReference mChatPhotosStorageReference;
+    private FirebaseRemoteConfig mFirebaseRemoteConfig;
+    private ProgressDialog mProgressDialog;
     private static final String channelID = "NewMSG";
 
     @Override
@@ -74,13 +92,15 @@ public class MainActivity extends AppCompatActivity {
         whitelistedCountries.add("US");
         whitelistedCountries.add("NP");
         whitelistedCountries.add("IN");
-       
+
         mUsername = ANONYMOUS;
 
-        FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
+        mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
+        firebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
         FirebaseStorage firebaseStorage = FirebaseStorage.getInstance();
         mMessagesDatabaseReference = firebaseDatabase.getReference().child("messages");
+        mUsersDatabaseReference = firebaseDatabase.getReference("users");
         mChatPhotosStorageReference = firebaseStorage.getReference().child("chat_photos");
 
 
@@ -125,16 +145,19 @@ public class MainActivity extends AppCompatActivity {
         mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(DEFAULT_MSG_LENGTH_LIMIT)});
 
         mSendButton.setOnClickListener(view -> {
+           // showProgressDialog();
             FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null);
             mMessagesDatabaseReference.push().setValue(friendlyMessage);
             mMessageEditText.setText("");
-            //throw new RuntimeException("Test Crash");
+
         });
 
         mAuthStateListener = firebaseAuth -> {
             FirebaseUser user = firebaseAuth.getCurrentUser();
             if(user != null){
                 //user signed in
+                muserID = user.getUid();
+                mEmail = user.getEmail();
                 mPhoneNum = user.getPhoneNumber();
                 onSignedInInitialize(user.getDisplayName());
 
@@ -164,6 +187,55 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
             startActivityForResult(Intent.createChooser(intent, "Complete action using"), RC_PHOTO_PICKER);
         });
+
+        messageListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
+                FriendlyMessage friendlyMessage = (FriendlyMessage) adapterView.getItemAtPosition(i);
+                copyFunction(friendlyMessage);
+            return true;
+            }
+        });
+
+        FirebaseRemoteConfigSettings configSettings = new FirebaseRemoteConfigSettings.Builder().setFetchTimeoutInSeconds(100).build();
+        mFirebaseRemoteConfig.setConfigSettingsAsync(configSettings);
+
+        Map<String, Object> defaultConfigMap = new HashMap<>();
+        defaultConfigMap.put(FRIENDLY_MSG_LENGTH_KEY, DEFAULT_MSG_LENGTH_LIMIT);
+        mFirebaseRemoteConfig.setDefaultsAsync(defaultConfigMap);
+        fetchConfig();
+    }
+
+    public void fetchConfig() {
+        long cacheExpiration = 100;
+
+        if(mFirebaseRemoteConfig.getInfo().getConfigSettings().getFetchTimeoutInSeconds() == 100){
+            cacheExpiration = 0;
+
+        }
+
+        mFirebaseRemoteConfig.fetch(cacheExpiration)
+                .addOnSuccessListener(new OnSuccessListener<Void>() {
+            @Override
+            public void onSuccess(Void aVoid) {
+                mFirebaseRemoteConfig.activate();
+                applyRetrievedLengthLimit();
+            }
+        })
+        .addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+" Error Occured", Toast.LENGTH_LONG);
+                applyRetrievedLengthLimit();
+
+            }
+        });
+    }
+
+    private void applyRetrievedLengthLimit(){
+        Long friendly_msg_length = mFirebaseRemoteConfig.getLong(FRIENDLY_MSG_LENGTH_KEY);
+        mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendly_msg_length.intValue())});
+        Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+"", Toast.LENGTH_LONG);
     }
 
 
@@ -172,6 +244,7 @@ public class MainActivity extends AppCompatActivity {
         if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
             getName();
         }
+
         attachDatabaseReadListener();
     }
     private void onSignedOutCleanup() {
@@ -198,10 +271,10 @@ public class MainActivity extends AppCompatActivity {
                     String currentMsgUname = friendlyMessage.getName();
                     String currentMsgText = friendlyMessage.getText();
 
-                    if(!currentMsgUname.equals(mUsername) && mMessageAdapter.getCount() >15 && mMessageAdapter.getPosition(friendlyMessage) > 14) {
-                        //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
-                                createNotification(currentMsgUname, currentMsgText);
-                        }
+//                    if(!currentMsgUname.equals(mUsername) && mMessageAdapter.getCount() >15 && mMessageAdapter.getPosition(friendlyMessage) > 14) {
+//                        //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
+//                                createNotification(currentMsgUname, currentMsgText);
+//                        }
                 }
 
                 @Override
@@ -246,6 +319,11 @@ public class MainActivity extends AppCompatActivity {
             editor.apply();
             AuthUI.getInstance().signOut(this);
         }
+        else if(item.getItemId() == R.id.userdetails){
+            Intent intent = new Intent(MainActivity.this, UserDetails.class);
+            intent.putExtra("UID", muserID);
+            startActivity(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -256,7 +334,49 @@ public class MainActivity extends AppCompatActivity {
             if (resultCode != Activity.RESULT_OK) {
                 finish();
             }
-        }
+            else{
+                mFirebaseAuth = FirebaseAuth.getInstance();
+                FirebaseUser user = mFirebaseAuth.getCurrentUser();
+                muserID = user.getUid();
+
+                SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
+                String signInTime = dateFormat.format(new Date());
+
+                mUsersDatabaseReference1 = firebaseDatabase.getReference("users/"+muserID);
+                mUsersDatabaseReference1.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        if(dataSnapshot.exists()) {
+                            mUsersDatabaseReference.child(muserID).child("lastSignIN").setValue(signInTime);
+                        }
+                        else{
+                            Toast.makeText(MainActivity.this, "New User", Toast.LENGTH_LONG).show();
+                            mUsername = user.getDisplayName();
+                            mEmail = user.getEmail();
+                            mPhoneNum = user.getPhoneNumber();
+                            if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
+                                getName();
+                            }
+                            FriendlyUser friendlyUser = new FriendlyUser(mUsername, mEmail, mPhoneNum, signInTime, signInTime);
+                            mUsersDatabaseReference.child(muserID).setValue(friendlyUser);
+
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        Toast.makeText(MainActivity.this, "Some Error Occured!", Toast.LENGTH_LONG).show();
+                        isOld = false;
+                    }
+                });
+
+                }
+
+
+
+            }
+
+
         if (requestCode == RC_PHOTO_PICKER) {
             if (resultCode == Activity.RESULT_OK) {
                 assert data != null;
@@ -318,9 +438,9 @@ public class MainActivity extends AppCompatActivity {
                 SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
                 mUsername = sharedPreferences.getString(FULLNAME, "");
 
-        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)){
-            askForName();
-        }
+//        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)){
+//            askForName();
+//        }
     }
 
 
@@ -362,6 +482,59 @@ public class MainActivity extends AppCompatActivity {
     private void scrollMyListViewToBottom(int pos) {
         messageListView.post(() -> messageListView.setSelection(pos));
     }
+
+    public void showProgressDialog() {
+        if (mProgressDialog == null) {
+            mProgressDialog = new ProgressDialog(this);
+            mProgressDialog.setMessage("Loading ...");
+            mProgressDialog.setIndeterminate(true);
+            mProgressDialog.setCancelable(false);
+        }
+
+        mProgressDialog.show();
+    }
+
+
+    public void hideProgressDialog() {
+        if (mProgressDialog != null && mProgressDialog.isShowing()) {
+            mProgressDialog.dismiss();
+        }
+    }
+
+private void copyFunction(FriendlyMessage friendlyMessage){
+        try {
+            int sdk = android.os.Build.VERSION.SDK_INT;
+            if (sdk < android.os.Build.VERSION_CODES.HONEYCOMB) {
+                android.text.ClipboardManager clipboard = (android.text.ClipboardManager) MainActivity.this
+                        .getSystemService(MainActivity.this.CLIPBOARD_SERVICE);
+                if(friendlyMessage.getPhotoUrl() == null || friendlyMessage.getPhotoUrl().toString().trim().equals("")) {
+                    clipboard.setText(friendlyMessage.getName()+": "+friendlyMessage.getText());
+                    Toast.makeText(MainActivity.this, "Message Text Copied", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "Can't Copy Images - Image URL Copied", Toast.LENGTH_SHORT).show();
+                    clipboard.setText(friendlyMessage.getName()+": "+friendlyMessage.getPhotoUrl());
+                }
+            } else {
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) MainActivity.this.getSystemService(MainActivity.this.CLIPBOARD_SERVICE);
+                if(friendlyMessage.getPhotoUrl() == null || friendlyMessage.getPhotoUrl().toString().trim().equals("")) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("text", friendlyMessage.getName()+": "+friendlyMessage.getText());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(MainActivity.this, "Message Text Copied", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("text", friendlyMessage.getName()+": "+friendlyMessage.getPhotoUrl());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(MainActivity.this, "Can't Copy Images - Image URL Copied", Toast.LENGTH_SHORT).show();
+                }
+
+            }
+        } catch (Exception e) {
+        }
+    }
+
 }
+
+
 
 
