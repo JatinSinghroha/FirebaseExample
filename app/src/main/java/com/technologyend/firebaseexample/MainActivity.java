@@ -43,6 +43,8 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +73,9 @@ public class MainActivity extends AppCompatActivity {
     private EditText mMessageEditText;
     private ListView messageListView;
     private Boolean isOld;
-
+    private final DateFormat dateFormat = new SimpleDateFormat("E, d MMM YYYY, hh:mm:ss aa");
+    private final DateFormat dateFormat1 = new SimpleDateFormat("E, d MMM YYYY, hh:mm aa");
+    private Date logintime;
     private Button mSendButton;
     private String muserID, mUsername, mPhoneNum, mEmail;
     private DatabaseReference mMessagesDatabaseReference, mUsersDatabaseReference, mUsersDatabaseReference1;
@@ -92,7 +96,11 @@ public class MainActivity extends AppCompatActivity {
         whitelistedCountries.add("US");
         whitelistedCountries.add("NP");
         whitelistedCountries.add("IN");
-
+        try {
+            logintime = dateFormat.parse(getTimeWithSS());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
         mUsername = ANONYMOUS;
 
         mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
@@ -146,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
 
         mSendButton.setOnClickListener(view -> {
            // showProgressDialog();
-            FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null);
+            FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, getTimeWithSS());
             mMessagesDatabaseReference.push().setValue(friendlyMessage);
             mMessageEditText.setText("");
 
@@ -261,20 +269,25 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     FriendlyMessage friendlyMessage = snapshot.getValue(FriendlyMessage.class);
-                    mMessageAdapter.add(friendlyMessage);
 
-                    if(mMessageAdapter.getCount() >= 15){
-                        scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
+                    scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
+
+                    try {
+                        String currentMsgUname = friendlyMessage.getName();
+                        String currentMsgText = friendlyMessage.getText();
+                        Date timeOfMsg = dateFormat.parse(friendlyMessage.getDateandtime());
+                        if(!currentMsgUname.equals(mUsername) && timeOfMsg.after(logintime)) {
+                            //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
+                            createNotification(currentMsgUname, currentMsgText);
+                        }
+                        friendlyMessage.setDateandtime(getTime());
+                        mMessageAdapter.add(friendlyMessage);
+                    } catch (ParseException e) {
+                        e.printStackTrace();
                     }
 
-                    assert friendlyMessage != null;
-                    String currentMsgUname = friendlyMessage.getName();
-                    String currentMsgText = friendlyMessage.getText();
 
-//                    if(!currentMsgUname.equals(mUsername) && mMessageAdapter.getCount() >15 && mMessageAdapter.getPosition(friendlyMessage) > 14) {
-//                        //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
-//                                createNotification(currentMsgUname, currentMsgText);
-//                        }
+
                 }
 
                 @Override
@@ -339,8 +352,7 @@ public class MainActivity extends AppCompatActivity {
                 FirebaseUser user = mFirebaseAuth.getCurrentUser();
                 muserID = user.getUid();
 
-                SimpleDateFormat dateFormat = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss");
-                String signInTime = dateFormat.format(new Date());
+                String signInTime = getTimeWithSS();
 
                 mUsersDatabaseReference1 = firebaseDatabase.getReference("users/"+muserID);
                 mUsersDatabaseReference1.addValueEventListener(new ValueEventListener() {
@@ -389,7 +401,7 @@ public class MainActivity extends AppCompatActivity {
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
                         .addOnSuccessListener(this, taskSnapshot -> photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString());
+                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString(), getTimeWithSS());
                             mMessagesDatabaseReference.push().setValue(friendlyMessage);
                             Toast.makeText(MainActivity.this, "Image Uploaded, Loading Now", Toast.LENGTH_LONG).show();
                         }));
@@ -533,6 +545,15 @@ private void copyFunction(FriendlyMessage friendlyMessage){
         }
     }
 
+    private String getTime(){
+        String currentTime = dateFormat1.format(new Date());
+        return currentTime;
+    }
+
+    private String getTimeWithSS(){
+        String currentTime = dateFormat.format(new Date());
+        return currentTime;
+    }
 }
 
 
