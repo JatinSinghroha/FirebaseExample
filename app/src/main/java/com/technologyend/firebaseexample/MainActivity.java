@@ -72,12 +72,12 @@ public class MainActivity extends AppCompatActivity {
     private MessageAdapter mMessageAdapter;
     private EditText mMessageEditText;
     private ListView messageListView;
-    private Boolean isOld;
+    private Boolean isOld, changeLogin;
     private final DateFormat dateFormat = new SimpleDateFormat("E, d MMM YYYY, hh:mm:ss aa");
     private final DateFormat dateFormat1 = new SimpleDateFormat("E, d MMM YYYY, hh:mm aa");
-    private Date logintime;
+    private Date logintime, onemoretime;
     private Button mSendButton;
-    private String muserID, mUsername, mPhoneNum, mEmail;
+    private String muserID, mUsername, mPhoneNum, mEmail, signInTime ;
     private DatabaseReference mMessagesDatabaseReference, mUsersDatabaseReference, mUsersDatabaseReference1;
     private ChildEventListener mChildEventListener;
     private FirebaseAuth mFirebaseAuth;
@@ -92,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        changeLogin = true;
         ArrayList<String> whitelistedCountries = new ArrayList<String>();
         whitelistedCountries.add("US");
         whitelistedCountries.add("NP");
@@ -101,7 +102,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (ParseException e) {
             e.printStackTrace();
         }
-        mUsername = ANONYMOUS;
 
         mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
         firebaseDatabase = FirebaseDatabase.getInstance();
@@ -164,15 +164,13 @@ public class MainActivity extends AppCompatActivity {
             FirebaseUser user = firebaseAuth.getCurrentUser();
             if(user != null){
                 //user signed in
-                muserID = user.getUid();
-                mEmail = user.getEmail();
-                mPhoneNum = user.getPhoneNumber();
-                onSignedInInitialize(user.getDisplayName());
-
+                onSignedInInitialize();
+                attachDatabaseReadListener();
             }
             else{
                 //user not signed in
                 onSignedOutCleanup();
+                changeLogin = true;
                 startActivityForResult(
                         AuthUI.getInstance()
                                 .createSignInIntentBuilder()
@@ -214,6 +212,44 @@ public class MainActivity extends AppCompatActivity {
         fetchConfig();
     }
 
+    private void onSignedInInitialize() {
+        mFirebaseAuth = FirebaseAuth.getInstance();
+        FirebaseUser user = mFirebaseAuth.getCurrentUser();
+        muserID = user.getUid();
+        mUsersDatabaseReference1 = firebaseDatabase.getReference("users/"+muserID);
+        mUsersDatabaseReference1.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if(dataSnapshot.exists()) {
+                    FriendlyUser friendlyUser = dataSnapshot.getValue(FriendlyUser.class);
+                    mUsername = friendlyUser.getUsername();
+                    if(changeLogin == true) {
+                        mUsersDatabaseReference1.child("lastSignIN").setValue(getTimeWithSS());
+                    }
+                }
+                else{
+                    Toast.makeText(MainActivity.this, "New User", Toast.LENGTH_LONG).show();
+                    mUsername = user.getDisplayName();
+                    mEmail = user.getEmail();
+                    mPhoneNum = user.getPhoneNumber();
+                    if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
+                        getName1();
+                    }
+                    else{
+                        FriendlyUser friendlyUser = new FriendlyUser(mUsername, mEmail, mPhoneNum, getTime(), getTimeWithSS());
+                        mUsersDatabaseReference.child(muserID).setValue(friendlyUser);
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                isOld = false;
+            }
+        });
+
+    }
+
     public void fetchConfig() {
         long cacheExpiration = 100;
 
@@ -247,14 +283,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void onSignedInInitialize(String username) {
-        mUsername = username;
-        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
-            getName();
-        }
-
-        attachDatabaseReadListener();
-    }
     private void onSignedOutCleanup() {
         mUsername = ANONYMOUS;
         mMessageAdapter.clear();
@@ -269,24 +297,22 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     FriendlyMessage friendlyMessage = snapshot.getValue(FriendlyMessage.class);
-
                     scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
-
                     try {
                         String currentMsgUname = friendlyMessage.getName();
                         String currentMsgText = friendlyMessage.getText();
                         Date timeOfMsg = dateFormat.parse(friendlyMessage.getDateandtime());
-                        if(!currentMsgUname.equals(mUsername) && timeOfMsg.after(logintime)) {
-                            //Toast.makeText(MainActivity.this, mMessageAdapter.getPosition(friendlyMessage)+"", Toast.LENGTH_SHORT).show();
+                        if(!currentMsgUname.equals(mUsername) && timeOfMsg.after(logintime) == true && timeOfMsg.after(onemoretime)) {
                             createNotification(currentMsgUname, currentMsgText);
                         }
                         friendlyMessage.setDateandtime(getTime());
+                        if(currentMsgUname.equals(mUsername)){
+                            friendlyMessage.setName("You");
+                        }
                         mMessageAdapter.add(friendlyMessage);
                     } catch (ParseException e) {
                         e.printStackTrace();
                     }
-
-
 
                 }
 
@@ -325,7 +351,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if(item.getItemId() == R.id.sign_out_menu){
+        if(item.getItemId() == R.id.sign_out_icon){
             SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString(FULLNAME, "");
@@ -333,8 +359,13 @@ public class MainActivity extends AppCompatActivity {
             AuthUI.getInstance().signOut(this);
         }
         else if(item.getItemId() == R.id.userdetails){
+            changeLogin= false;
             Intent intent = new Intent(MainActivity.this, UserDetails.class);
-            intent.putExtra("UID", muserID);
+            startActivity(intent);
+        }
+        else if(item.getItemId() == R.id.dev_credits){
+            changeLogin = false;
+            Intent intent = new Intent(MainActivity.this, JatinSinghroha.class);
             startActivity(intent);
         }
         return super.onOptionsItemSelected(item);
@@ -348,43 +379,8 @@ public class MainActivity extends AppCompatActivity {
                 finish();
             }
             else{
-                mFirebaseAuth = FirebaseAuth.getInstance();
-                FirebaseUser user = mFirebaseAuth.getCurrentUser();
-                muserID = user.getUid();
-
-                String signInTime = getTimeWithSS();
-
-                mUsersDatabaseReference1 = firebaseDatabase.getReference("users/"+muserID);
-                mUsersDatabaseReference1.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if(dataSnapshot.exists()) {
-                            mUsersDatabaseReference.child(muserID).child("lastSignIN").setValue(signInTime);
-                        }
-                        else{
-                            Toast.makeText(MainActivity.this, "New User", Toast.LENGTH_LONG).show();
-                            mUsername = user.getDisplayName();
-                            mEmail = user.getEmail();
-                            mPhoneNum = user.getPhoneNumber();
-                            if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)) {
-                                getName();
-                            }
-                            FriendlyUser friendlyUser = new FriendlyUser(mUsername, mEmail, mPhoneNum, signInTime, signInTime);
-                            mUsersDatabaseReference.child(muserID).setValue(friendlyUser);
-
-                        }
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Toast.makeText(MainActivity.this, "Some Error Occured!", Toast.LENGTH_LONG).show();
-                        isOld = false;
-                    }
-                });
-
+                onSignedInInitialize();
                 }
-
-
 
             }
 
@@ -415,6 +411,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        try {
+            onemoretime = dateFormat.parse(getTimeWithSS());
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
         mFirebaseAuth.addAuthStateListener(mAuthStateListener);
     }
 
@@ -428,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
         mMessageAdapter.clear();
     }
 
-    private void askForName(){
+    private void getName1(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Please Enter your Name: ");
         builder.setCancelable(false);
@@ -436,23 +437,15 @@ public class MainActivity extends AppCompatActivity {
         input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
         builder.setPositiveButton("OK", (dialog, which) -> {
+            FriendlyUser friendlyUser = new FriendlyUser(input.getText().toString(), mEmail, mPhoneNum, getTime(), getTimeWithSS());
+            mUsersDatabaseReference.child(muserID).setValue(friendlyUser);
             SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString(FULLNAME, mPhoneNum+" ~ "+input.getText().toString());
             editor.apply();
-            mUsername = sharedPreferences.getString(FULLNAME, "");
+
         });
-
         builder.show();
-    }
-
-    private void getName(){
-                SharedPreferences sharedPreferences = getSharedPreferences(MYSHAREDPREF, MODE_PRIVATE);
-                mUsername = sharedPreferences.getString(FULLNAME, "");
-
-//        if(mUsername == null || mUsername.equals("") || mUsername.equals(ANONYMOUS)){
-//            askForName();
-//        }
     }
 
 
@@ -551,8 +544,8 @@ private void copyFunction(FriendlyMessage friendlyMessage){
     }
 
     private String getTimeWithSS(){
-        String currentTime = dateFormat.format(new Date());
-        return currentTime;
+        String currentTime1 = dateFormat.format(new Date());
+        return currentTime1;
     }
 }
 

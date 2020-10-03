@@ -6,6 +6,127 @@
     android:layout_height="match_parent"
     tools:context=".UserDetails">
 
+    <EditText
+        android:id="@+id/phonenumET"
+        android:maxLength="30"
+        android:maxLines="1"
+        android:inputType="phone"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="14dp"
+        android:hint="Your Phone Number"
+        android:paddingLeft="20dp"
+        android:textColor="#F44336"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/userphonenumTV"
+        app:layout_constraintTop_toBottomOf="@+id/email" />
+
+    <TextView
+        android:id="@+id/userphonenumTV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="36dp"
+        android:text="Phone No.: "
+        android:textColor="#06710B"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userEmailTV" />
+
+    <EditText
+        android:id="@+id/lastLoginIn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="12dp"
+        android:editable="false"
+        android:enabled="false"
+        android:focusable="false"
+        android:hint="Last Login"
+        android:inputType="none"
+        android:paddingLeft="20dp"
+        android:textColor="#F44336"
+        android:textSize="18sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/userlastloginTV"
+        app:layout_constraintTop_toBottomOf="@+id/signUpDate" />
+
+    <EditText
+        android:id="@+id/signUpDate"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="14dp"
+        android:editable="false"
+        android:enabled="false"
+        android:focusable="false"
+        android:hint="SignupDate"
+        android:inputType="none"
+        android:paddingLeft="20dp"
+        android:textColor="#F44336"
+        android:textSize="18sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/userphonenumTV"
+        app:layout_constraintTop_toBottomOf="@+id/phonenumET" />
+
+    <TextView
+        android:id="@+id/userlastloginTV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="36dp"
+        android:text="Last Login: "
+        android:textColor="#F44336"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/usersignupTV" />
+
+    <EditText
+        android:id="@+id/email"
+        android:maxLength="30"
+        android:maxLines="1"
+        android:inputType="textEmailAddress"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="12dp"
+        android:hint="Enter your Email"
+        android:paddingLeft="20dp"
+        android:textColor="#F44336"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toEndOf="@+id/userNameTV"
+        app:layout_constraintTop_toBottomOf="@+id/username" />
+
+    <TextView
+        android:id="@+id/usersignupTV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="36dp"
+        android:text="Signed Up: "
+        android:textColor="#F44336"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userphonenumTV" />
+
+    <TextView
+        android:id="@+id/userEmailTV"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="36dp"
+        android:text="Email: "
+        android:textColor="#06710B"
+        android:textSize="18sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/userNameTV" />
 
     <TextView
         android:id="@+id/userNameTV"
@@ -14,20 +135,41 @@
         android:layout_marginStart="24dp"
         android:layout_marginTop="16dp"
         android:text="Name: "
-        android:textColor="#F44336"
-        android:textSize="24sp"
+        android:textColor="#06710B"
+        android:textSize="18sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <EditText
         android:id="@+id/username"
+        android:maxLength="30"
+        android:maxLines="1"
+        android:inputType="text"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="10dp"
         android:layout_marginTop="4dp"
+        android:hint="Enter Your Name"
+        android:paddingLeft="20dp"
         android:textColor="#F44336"
-        android:textSize="24sp"
+        android:textSize="20sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/userNameTV"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btnSaveChanges"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:backgroundTint="#FF9800"
+        android:text="Save Changes"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/lastLoginIn" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
