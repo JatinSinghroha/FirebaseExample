@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String MYSHAREDPREF = "mysharedpref";
     private static final String FULLNAME = "fullname";
     public static final String FRIENDLY_MSG_LENGTH_KEY = "friendly_msg_length";
+    private AlertDialog.Builder getchannel;
     private MessageAdapter mMessageAdapter;
     private EditText mMessageEditText;
     private ListView messageListView;
@@ -102,7 +103,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (ParseException e) {
             e.printStackTrace();
         }
-
+        //createChannelGroup();
+        //getchannel.show();
         mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
         firebaseDatabase = FirebaseDatabase.getInstance();
         mFirebaseAuth = FirebaseAuth.getInstance();
@@ -162,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
 
         mAuthStateListener = firebaseAuth -> {
             FirebaseUser user = firebaseAuth.getCurrentUser();
+
             if(user != null){
                 //user signed in
                 onSignedInInitialize();
@@ -269,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
         .addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+" Error Occured", Toast.LENGTH_LONG);
+                //Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+" Error Occured", Toast.LENGTH_LONG);
                 applyRetrievedLengthLimit();
 
             }
@@ -279,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
     private void applyRetrievedLengthLimit(){
         Long friendly_msg_length = mFirebaseRemoteConfig.getLong(FRIENDLY_MSG_LENGTH_KEY);
         mMessageEditText.setFilters(new InputFilter[]{new InputFilter.LengthFilter(friendly_msg_length.intValue())});
-        Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+"", Toast.LENGTH_LONG);
+      //  Toast.makeText(MainActivity.this, FRIENDLY_MSG_LENGTH_KEY+"", Toast.LENGTH_LONG);
     }
 
 
@@ -302,10 +305,12 @@ public class MainActivity extends AppCompatActivity {
                         String currentMsgUname = friendlyMessage.getName();
                         String currentMsgText = friendlyMessage.getText();
                         Date timeOfMsg = dateFormat.parse(friendlyMessage.getDateandtime());
+                        String dateBeforeCon = friendlyMessage.getDateandtime();
+                        String dateAfterCon = dateBeforeCon.replace(dateBeforeCon.substring(dateBeforeCon.length() -6, dateBeforeCon.length() -3), "");
+                        friendlyMessage.setDateandtime(dateAfterCon);
                         if(!currentMsgUname.equals(mUsername) && timeOfMsg.after(logintime) == true && timeOfMsg.after(onemoretime)) {
                             createNotification(currentMsgUname, currentMsgText);
                         }
-                        friendlyMessage.setDateandtime(getTime());
                         if(currentMsgUname.equals(mUsername)){
                             friendlyMessage.setName("You");
                         }
@@ -380,8 +385,9 @@ public class MainActivity extends AppCompatActivity {
             }
             else{
                 onSignedInInitialize();
-                }
 
+
+                }
             }
 
 
@@ -446,6 +452,20 @@ public class MainActivity extends AppCompatActivity {
 
         });
         builder.show();
+    }
+
+    private void createChannelGroup(){
+        getchannel = new AlertDialog.Builder(this);
+        getchannel.setTitle("Please Enter Topic/Channel to Join: ");
+        getchannel.setCancelable(false);
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        getchannel.setView(input);
+        getchannel.setPositiveButton("OK", (dialog, which) -> {
+
+            mMessagesDatabaseReference = mMessagesDatabaseReference.child(input.getText().toString());
+
+        });
     }
 
 
