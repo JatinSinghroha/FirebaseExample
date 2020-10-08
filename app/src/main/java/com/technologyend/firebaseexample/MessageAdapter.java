@@ -43,7 +43,7 @@ public class MessageAdapter extends ArrayAdapter<FriendlyMessage> {
             messageTextView.setText(message.getText());
         }
         authorTextView.setText(message.getName());
-        timeTextView.setText(message.getDateandtime());
+        timeTextView.setText(message.getDateandtimewithoutss());
 
         return convertView;
     }

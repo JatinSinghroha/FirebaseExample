@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="5dp"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/disNameTV"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.8"
+        android:background="#28FF9800"
+        android:maxLines="1"
+        android:paddingBottom="2dp"
+        android:paddingTop="2dp"
+        android:textAlignment="center"
+        android:textColor="#ED8D00" />
+
+    <TextView
+        android:id="@+id/confirmedTV"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.1"
+        android:background="#28FF073A"
+        android:maxLines="1"
+        android:paddingBottom="2dp"
+
+        android:paddingTop="2dp"
+        android:textAlignment="center"
+        android:textColor="#F44336" />
+
+    <TextView
+        android:id="@+id/recoveredTV"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.1"
+        android:background="#2829A847"
+        android:maxLines="1"
+        android:paddingBottom="2dp"
+        android:paddingTop="2dp"
+        android:textAlignment="center"
+        android:textColor="#4CAF50" />
+
+    <TextView
+        android:id="@+id/activeTV"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.9"
+        android:background="#28007BFF"
+        android:maxLines="1"
+        android:paddingBottom="2dp"
+        android:paddingTop="2dp"
+        android:textAlignment="center"
+        android:textColor="#2196F3" />
+
+    <TextView
+        android:id="@+id/deathsTV"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="0.75"
+        android:background="#286C757D"
+        android:maxLines="1"
+
+        android:paddingBottom="2dp"
+        android:paddingTop="2dp"
+        android:textAlignment="center" />
+
+</LinearLayout>

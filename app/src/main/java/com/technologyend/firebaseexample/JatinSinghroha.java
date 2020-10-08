@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.net.URLEncoder;
 
@@ -35,8 +36,12 @@ public class JatinSinghroha extends AppCompatActivity {
                     if (i.resolveActivity(packageManager) != null) {
                         JatinSinghroha.this.startActivity(i);
                     }
+                    else
+                    {
+                        Toast.makeText(JatinSinghroha.this, "Whatsapp Not Found. Please install Whatsapp!", Toast.LENGTH_LONG).show();
+                    }
                 } catch (Exception e){
-                    e.printStackTrace();
+                    Toast.makeText(JatinSinghroha.this, "Some Error Occured!", Toast.LENGTH_LONG).show();
                 }
             }
         });

@@ -156,7 +156,9 @@ public class MainActivity extends AppCompatActivity {
 
         mSendButton.setOnClickListener(view -> {
            // showProgressDialog();
-            FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, getTimeWithSS());
+            FriendlyMessage friendlyMessage = new FriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, getTimeWithSS(), getTime(), muserID);
+            TryFriendlyMessage tryFriendlyMessage = new TryFriendlyMessage(mMessageEditText.getText().toString(), mUsername, null, getTimeWithSS(), muserID);
+            mMessagesDatabaseReference.child("tryfriendlymsg").push().setValue(tryFriendlyMessage);
             mMessagesDatabaseReference.push().setValue(friendlyMessage);
             mMessageEditText.setText("");
 
@@ -300,22 +302,21 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
                     FriendlyMessage friendlyMessage = snapshot.getValue(FriendlyMessage.class);
-                    scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
                     try {
                         String currentMsgUname = friendlyMessage.getName();
                         String currentMsgText = friendlyMessage.getText();
+                        String msgByUID = friendlyMessage.getSentByUID();
                         Date timeOfMsg = dateFormat.parse(friendlyMessage.getDateandtime());
-                        String dateBeforeCon = friendlyMessage.getDateandtime();
-                        String dateAfterCon = dateBeforeCon.replace(dateBeforeCon.substring(dateBeforeCon.length() -6, dateBeforeCon.length() -3), "");
-                        friendlyMessage.setDateandtime(dateAfterCon);
-                        if(!currentMsgUname.equals(mUsername) && timeOfMsg.after(logintime) == true && timeOfMsg.after(onemoretime)) {
+                        if(!currentMsgUname.equals(mUsername) && !msgByUID.equals(muserID) && timeOfMsg.after(logintime) == true && timeOfMsg.after(onemoretime)) {
                             createNotification(currentMsgUname, currentMsgText);
                         }
-                        if(currentMsgUname.equals(mUsername)){
+                        if(currentMsgUname.equals(mUsername) || msgByUID.equals(muserID)){
                             friendlyMessage.setName("You");
                         }
                         mMessageAdapter.add(friendlyMessage);
-                    } catch (ParseException e) {
+                        scrollMyListViewToBottom(mMessageAdapter.getPosition(friendlyMessage));
+
+                    } catch (Exception e) {
                         e.printStackTrace();
                     }
 
@@ -373,6 +374,11 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, JatinSinghroha.class);
             startActivity(intent);
         }
+        else if(item.getItemId() == R.id.corona){
+            changeLogin = false;
+            Intent intent = new Intent(MainActivity.this, Covid19Data.class);
+            startActivity(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -403,7 +409,7 @@ public class MainActivity extends AppCompatActivity {
                 // Upload file to Firebase Storage
                 photoRef.putFile(selectedImageUri)
                         .addOnSuccessListener(this, taskSnapshot -> photoRef.getDownloadUrl().addOnSuccessListener(uri -> {
-                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString(), getTimeWithSS());
+                            FriendlyMessage friendlyMessage = new FriendlyMessage(null, mUsername, uri.toString(), getTimeWithSS(), getTime(),  muserID);
                             mMessagesDatabaseReference.push().setValue(friendlyMessage);
                             Toast.makeText(MainActivity.this, "Image Uploaded, Loading Now", Toast.LENGTH_LONG).show();
                         }));

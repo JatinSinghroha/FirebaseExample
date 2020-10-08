@@ -1,36 +1,22 @@
-/**
- * Copyright JNM *
- */
 package com.technologyend.firebaseexample;
 
-public class FriendlyMessage {
-
+public class TryFriendlyMessage {
     private String text;
     private String name;
     private String photoUrl;
     private String dateandtime;
-    private String dateandtimewithoutss;
     private String sentByUID;
 
-    public FriendlyMessage() {
+    public TryFriendlyMessage(){
+
     }
 
-    public FriendlyMessage(String text, String name, String photoUrl, String dateandtime, String dateandtimewithoutss, String sentByUID) {
+    public TryFriendlyMessage(String text, String name, String photoUrl, String dateandtime, String sentByUID) {
         this.text = text;
         this.name = name;
         this.photoUrl = photoUrl;
         this.dateandtime = dateandtime;
-        this.dateandtimewithoutss = dateandtimewithoutss;
         this.sentByUID = sentByUID;
-
-    }
-
-    public String getDateandtimewithoutss() {
-        return dateandtimewithoutss;
-    }
-
-    public void setDateandtimewithoutss(String dateandtimewithoutss) {
-        this.dateandtimewithoutss = dateandtimewithoutss;
     }
 
     public String getText() {
@@ -64,7 +50,6 @@ public class FriendlyMessage {
     public void setDateandtime(String dateandtime) {
         this.dateandtime = dateandtime;
     }
-
 
     public String getSentByUID() {
         return sentByUID;
