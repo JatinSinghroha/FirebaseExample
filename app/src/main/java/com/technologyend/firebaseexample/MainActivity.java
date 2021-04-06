@@ -374,11 +374,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, JatinSinghroha.class);
             startActivity(intent);
         }
-        else if(item.getItemId() == R.id.corona){
-            changeLogin = false;
-            Intent intent = new Intent(MainActivity.this, Covid19Data.class);
-            startActivity(intent);
-        }
         return super.onOptionsItemSelected(item);
     }
 
